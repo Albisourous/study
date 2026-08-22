@@ -1,0 +1,24 @@
+{
+  "pluginList": [
+    "k4rnaj1k/obsidian-kindle-scribe-notes-sync-plugin"
+  ],
+  "pluginSubListFrozenVersion": [
+    {
+      "repo": "k4rnaj1k/obsidian-kindle-scribe-notes-sync-plugin",
+      "version": "latest"
+    }
+  ],
+  "themesList": [],
+  "updateAtStartup": true,
+  "updateThemesAtStartup": true,
+  "enableAfterInstall": true,
+  "loggingEnabled": false,
+  "loggingPath": "BRAT-log",
+  "loggingVerboseEnabled": false,
+  "debuggingMode": false,
+  "notificationsEnabled": true,
+  "globalTokenName": "",
+  "personalAccessToken": "",
+  "selectLatestPluginVersionByDefault": false,
+  "allowIncompatiblePlugins": false
+}
