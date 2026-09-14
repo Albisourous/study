@@ -15,7 +15,7 @@
 | `LeetCode/` | One note per problem. Copy `_templates/leetcode-template.md`, fill it in, done. |
 | `Dashboard.md` | Auto-updating view of everything in `LeetCode/` — coverage by pattern, by difficulty, and a "revisit" list of low-confidence problems. Requires the free **Dataview** plugin. |
 | `_templates/leetcode-template.md` | The note template. Set it as your default template (Settings → Templates → Template folder → `_templates`), or install **Templater** for a hotkey to insert it. |
-| `tracker/` | Local webpage: 14-day LeetCode plan (~5 problems/day) with checkbox tracking + one-click note creation. Open `tracker/index.html` in a browser, or run `node tracker/serve.js`. Progress saves in the browser. |
+| `tracker/` | Local webpage: adaptive plan (75 LC problems + mocks/design/behavioral tasks) with checkbox tracking, pace selector (5–7/day), streaks + one-click note creation. Unfinished work rolls into the next day automatically. Open `tracker/index.html` in a browser, or run `node tracker/serve.js`. Progress saves in the browser. |
 | `system-design/` | One doc per design you practice (template included). |
 | `behavioral/star-stories.md` | Your STAR bank, mapped to what Anthropic actually evaluates for. |
 | `mock-interviews/log.md` | Log every mock (self, friend, Pramp, etc.) with feedback. |

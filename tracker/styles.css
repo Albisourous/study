@@ -52,15 +52,31 @@ h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
 
 .stats {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   margin-top: 10px;
   font-size: 0.8rem;
   color: var(--text-dim);
   align-items: center;
 }
 
+.pace-wrap { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+
+.pace-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pace-btn:hover { color: var(--text); }
+.pace-btn.active { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+
 #reset-btn {
-  margin-left: auto;
   background: none;
   border: 1px solid var(--border);
   color: var(--text-dim);
@@ -101,11 +117,17 @@ h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
   flex-shrink: 0;
 }
 
-.day.complete .day-num { background: var(--done); }
+.day-topic { font-weight: 600; font-size: 0.95rem; flex: 1; min-width: 0; }
 
-.day-topic { font-weight: 600; font-size: 0.95rem; flex: 1; }
+.day-date {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-left: 8px;
+  white-space: nowrap;
+}
 
-.day-count { font-size: 0.8rem; color: var(--text-dim); }
+.day-count { font-size: 0.8rem; color: var(--text-dim); white-space: nowrap; }
 
 .chevron {
   color: var(--text-dim);
@@ -139,8 +161,9 @@ h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
   flex-shrink: 0;
 }
 
-.problem a.title {
+.problem .title {
   flex: 1;
+  min-width: 0;
   color: var(--text);
   text-decoration: none;
   font-size: 0.9rem;
@@ -148,7 +171,17 @@ h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
 
 .problem a.title:hover { color: var(--accent); text-decoration: underline; }
 
-.problem.done a.title { color: var(--text-dim); text-decoration: line-through; }
+.problem.done .title { color: var(--text-dim); text-decoration: line-through; }
+
+.problem .desc {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  margin-top: 2px;
+}
+
+.problem.done .desc { text-decoration: none; }
 
 .note {
   color: var(--text-dim);
@@ -159,7 +192,17 @@ h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
 
 .note:hover { color: var(--accent); }
 
-.diff {
+.topic-tag {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diff, .task-badge {
   font-size: 0.7rem;
   font-weight: 600;
   padding: 2px 8px;
@@ -170,6 +213,30 @@ h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
 .diff.E { color: var(--easy); background: rgba(0, 184, 163, 0.12); }
 .diff.M { color: var(--medium); background: rgba(255, 192, 30, 0.12); }
 .diff.H { color: var(--hard); background: rgba(255, 55, 95, 0.12); }
+
+.task-badge { color: var(--accent); background: rgba(255, 161, 22, 0.12); }
+
+.history {
+  margin-top: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px 16px;
+  font-size: 0.85rem;
+}
+
+.history summary { cursor: pointer; color: var(--text-dim); }
+
+.hist-group { margin-top: 10px; }
+
+.hist-date { font-weight: 600; font-size: 0.8rem; }
+
+.hist-item {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  text-decoration: line-through;
+  padding-left: 8px;
+}
 
 footer {
   margin-top: 32px;
