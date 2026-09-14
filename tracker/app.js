@@ -244,4 +244,22 @@ document.getElementById("reset-btn").addEventListener("click", () => {
   }
 });
 
+// Keep multiple open tabs in sync: `storage` fires in every tab except the one
+// that made the change; the focus re-sync covers anything that slips through.
+function syncFromStorage() {
+  const latest = JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
+  if (JSON.stringify(latest) !== JSON.stringify(done)) {
+    for (const k in done) delete done[k];
+    Object.assign(done, latest);
+    render();
+  }
+  const latestPace = +localStorage.getItem(PACE_KEY) || PACE_DEFAULT;
+  if (latestPace !== pace) {
+    pace = latestPace;
+    render();
+  }
+}
+window.addEventListener("storage", syncFromStorage);
+window.addEventListener("focus", syncFromStorage);
+
 render();
