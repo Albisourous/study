@@ -1,4 +1,4 @@
-const DONE_KEY = "lcstudy.done.v2"; // { itemId: "YYYY-MM-DD" }
+const DONE_KEY = "lcstudy.done.v2"; // { itemId: "YYYY-MM-DD" } — completion date
 const PACE_KEY = "lcstudy.pace";    // items per day: 5 | 6 | 7
 const VAULT = "study";              // Obsidian vault name = this folder's name
 
@@ -8,6 +8,10 @@ const NEW_NOTE = (title) =>
 const OPEN_NOTE = (file) => `obsidian://open?vault=${VAULT}&file=${encodeURIComponent(file)}`;
 
 const dateStr = (d = new Date()) => d.toLocaleDateString("sv-SE"); // local YYYY-MM-DD
+const fmtDate = (iso) =>
+  new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
 const fmtDay = (offset) => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -32,7 +36,7 @@ const chunk = (arr, n) => {
 
 const done = JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
 let pace = +localStorage.getItem(PACE_KEY) || PACE_DEFAULT;
-const openDays = new Set([0]);
+const openState = new Map(); // section key -> bool (user toggles)
 
 const saveDone = () => localStorage.setItem(DONE_KEY, JSON.stringify(done));
 const byId = Object.fromEntries(QUEUE.map((i) => [i.id, i]));
@@ -92,50 +96,46 @@ function updateStats() {
   );
 }
 
-function renderHistory() {
-  const box = document.getElementById("history");
-  box.innerHTML = "";
-  const byDate = {};
-  for (const [id, date] of Object.entries(done)) (byDate[date] ||= []).push(byId[id]);
-  const dates = Object.keys(byDate).sort().reverse();
-  if (!dates.length) return;
-
-  const det = document.createElement("details");
-  det.className = "history";
-  det.innerHTML = `<summary>Completed — ${Object.keys(done).length} items</summary>`;
-  for (const date of dates) {
-    const g = document.createElement("div");
-    g.className = "hist-group";
-    g.innerHTML =
-      `<div class="hist-date">${date} · ${byDate[date].length} done</div>` +
-      byDate[date].map((i) => `<div class="hist-item">${i.title}</div>`).join("");
-    det.appendChild(g);
-  }
-  box.appendChild(det);
+function recount(el, items) {
+  const doneN = items.filter((x) => done[x.id]).length;
+  el.querySelector(".day-count").textContent =
+    doneN === items.length ? `${doneN} done`
+    : doneN > 0 ? `${doneN}/${items.length} done`
+    : `${items.length} items`;
 }
 
 function render() {
   const main = document.getElementById("plan");
   main.innerHTML = "";
-  const schedule = chunk(QUEUE.filter((i) => !done[i.id]), pace);
-  const sections = [];
 
-  schedule.forEach((items, i) => {
+  const today = dateStr();
+  const todayKey = `d${today}`;
+  const remaining = QUEUE.filter((i) => !done[i.id]);
+  const doneToday = QUEUE.filter((i) => done[i.id] === today);
+  const pastDates = [...new Set(Object.values(done))].filter((d) => d < today).sort();
+
+  const sections = [];
+  let dayNum = 0;
+
+  const addSection = (items, chipText, dateLabel, key) => {
+    if (!items.length) return;
+    dayNum++;
     const el = document.createElement("section");
-    el.className = `day${openDays.has(i) ? " open" : ""}`;
-    sections.push(el);
+    const open = openState.get(key) ?? key === todayKey;
+    el.className = `day${open ? " open" : ""}`;
+    sections.push({ el, items, key });
 
     const topics = [...new Set(items.map((x) => x.topic))];
     const header = document.createElement("div");
     header.className = "day-header";
     header.innerHTML = `
-      <span class="day-num">${i === 0 ? "TODAY" : "DAY " + (i + 1)}</span>
-      <span class="day-topic">${topics.join(" · ")}<span class="day-date">${fmtDay(i)}</span></span>
-      <span class="day-count">${items.length} left</span>
+      <span class="day-num">${chipText}</span>
+      <span class="day-topic">${topics.join(" · ")}<span class="day-date">${dateLabel}</span></span>
+      <span class="day-count"></span>
       <span class="chevron">&#9654;</span>`;
     header.addEventListener("click", () => {
-      el.classList.toggle("open");
-      el.classList.contains("open") ? openDays.add(i) : openDays.delete(i);
+      const isOpen = el.classList.toggle("open");
+      openState.set(key, isOpen);
     });
 
     const list = document.createElement("div");
@@ -143,25 +143,22 @@ function render() {
 
     for (const item of items) {
       const row = document.createElement("label");
-      row.className = "problem";
+      row.className = `problem${done[item.id] ? " done" : ""}`;
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
+      cb.checked = !!done[item.id];
       cb.addEventListener("change", () => {
-        cb.checked ? (done[item.id] = dateStr()) : delete done[item.id];
+        cb.checked ? (done[item.id] = today) : delete done[item.id];
         saveDone();
         row.classList.toggle("done", cb.checked);
+        recount(el, items);
         updateStats();
-        renderHistory();
-        const left = items.filter((x) => !done[x.id]).length;
-        el.querySelector(".day-count").textContent = left ? `${left} left` : "done";
-        if (left === 0) {
-          const next = sections.findIndex((s) => s.querySelector("input:not(:checked)"));
-          if (next > -1) {
-            openDays.add(next);
-            sections[next].classList.add("open");
-            sections[next].scrollIntoView({ behavior: "smooth", block: "nearest" });
-          }
+        const next = sections.find((s) => s.el.querySelector("input:not(:checked)"));
+        if (next && !next.el.classList.contains("open")) {
+          next.el.classList.add("open");
+          openState.set(next.key, true);
+          next.el.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
       });
 
@@ -179,7 +176,7 @@ function render() {
         note.href = NEW_NOTE(item.title);
         note.title = "Log note in Obsidian";
         note.textContent = "✎ note";
-        wireNoteLink(note, `Opening Obsidian — LeetCode/${item.title}-${dateStr()}.md`);
+        wireNoteLink(note, `Opening Obsidian — LeetCode/${item.title}-${today}.md`);
 
         const diff = document.createElement("span");
         diff.className = `diff ${item.diff}`;
@@ -219,11 +216,30 @@ function render() {
     }
 
     el.append(header, list);
+    recount(el, items);
     main.appendChild(el);
-  });
+  };
+
+  // Past days: completed items stay pinned to the date they were done.
+  for (const date of pastDates) {
+    addSection(
+      QUEUE.filter((i) => done[i.id] === date),
+      `DAY ${dayNum + 1}`,
+      fmtDate(date),
+      `d${date}`
+    );
+  }
+
+  // Today: what you already did + enough upcoming items to fill your pace.
+  const slots = Math.max(0, pace - doneToday.length);
+  addSection([...doneToday, ...remaining.slice(0, slots)], "TODAY", fmtDay(0), todayKey);
+
+  // Upcoming days: the rest of the queue chunked by pace, starting tomorrow.
+  chunk(remaining.slice(slots), pace).forEach((items, j) =>
+    addSection(items, `DAY ${dayNum + 1}`, fmtDay(j + 1), `f${j}`)
+  );
 
   updateStats();
-  renderHistory();
 }
 
 document.querySelectorAll(".pace-btn").forEach((b) =>
@@ -238,8 +254,7 @@ document.getElementById("reset-btn").addEventListener("click", () => {
   if (confirm("Clear all progress?")) {
     for (const k in done) delete done[k];
     saveDone();
-    openDays.clear();
-    openDays.add(0);
+    openState.clear();
     render();
   }
 });
