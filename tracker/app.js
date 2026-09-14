@@ -38,6 +38,32 @@ const saveDone = () => localStorage.setItem(DONE_KEY, JSON.stringify(done));
 const byId = Object.fromEntries(QUEUE.map((i) => [i.id, i]));
 const total = QUEUE.length;
 
+let toastTimer;
+function showToast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+// Wires up an ✎ link: pop animation + toast, then lets the obsidian:// href fire.
+function wireNoteLink(note, msg) {
+  note.addEventListener("click", (e) => {
+    e.stopPropagation();
+    note.classList.remove("clicked");
+    void note.offsetWidth; // restart animation on rapid clicks
+    note.classList.add("clicked");
+    setTimeout(() => note.classList.remove("clicked"), 400);
+    showToast(msg);
+  });
+}
+
 function updateStats() {
   const n = Object.keys(done).length;
   document.getElementById("progress-fill").style.width = `${(n / total) * 100}%`;
@@ -152,8 +178,8 @@ function render() {
         note.className = "note";
         note.href = NEW_NOTE(item.title);
         note.title = "Log note in Obsidian";
-        note.textContent = "✎";
-        note.addEventListener("click", (e) => e.stopPropagation());
+        note.textContent = "✎ note";
+        wireNoteLink(note, `Opening Obsidian — LeetCode/${item.title}-${dateStr()}.md`);
 
         const diff = document.createElement("span");
         diff.className = `diff ${item.diff}`;
@@ -182,8 +208,8 @@ function render() {
           note.className = "note";
           note.href = OPEN_NOTE(item.file);
           note.title = "Open in Obsidian";
-          note.textContent = "✎";
-          note.addEventListener("click", (e) => e.stopPropagation());
+          note.textContent = "✎ note";
+          wireNoteLink(note, `Opening Obsidian — ${item.file}`);
           row.appendChild(note);
         }
         row.appendChild(badge);
