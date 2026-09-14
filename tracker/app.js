@@ -1,5 +1,7 @@
 const DONE_KEY = "lcstudy.done.v2"; // { itemId: "YYYY-MM-DD" } — completion date
 const PACE_KEY = "lcstudy.pace";    // items per day: 5 | 6 | 7
+const PLAN_KEY = "lcstudy.plan";    // { date, ids } — today's presented set, for rollover
+const MISS_KEY = "lcstudy.missed";  // { date: [ids] } — planned-but-unfinished per past date
 const VAULT = "study";              // Obsidian vault name = this folder's name
 
 const LC_URL = (slug) => `https://leetcode.com/problems/${slug}/`;
@@ -35,12 +37,26 @@ const chunk = (arr, n) => {
 }
 
 const done = JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
+let missed = JSON.parse(localStorage.getItem(MISS_KEY) || "{}");
 let pace = +localStorage.getItem(PACE_KEY) || PACE_DEFAULT;
 const openState = new Map(); // section key -> bool (user toggles)
 
 const saveDone = () => localStorage.setItem(DONE_KEY, JSON.stringify(done));
 const byId = Object.fromEntries(QUEUE.map((i) => [i.id, i]));
 const total = QUEUE.length;
+
+// On a new day, record yesterday's planned-but-unfinished items as missed.
+// Idempotent — safe to call on every render.
+function rollover(today) {
+  const plan = JSON.parse(localStorage.getItem(PLAN_KEY) || "null");
+  if (plan && plan.date < today) {
+    const unfinished = plan.ids.filter((id) => !done[id]);
+    if (unfinished.length) {
+      missed[plan.date] = [...new Set([...(missed[plan.date] || []), ...unfinished])];
+      localStorage.setItem(MISS_KEY, JSON.stringify(missed));
+    }
+  }
+}
 
 let toastTimer;
 function showToast(msg) {
@@ -96,11 +112,14 @@ function updateStats() {
   );
 }
 
-function recount(el, items) {
-  const doneN = items.filter((x) => done[x.id]).length;
-  el.querySelector(".day-count").textContent =
-    doneN === items.length ? `${doneN} done`
-    : doneN > 0 ? `${doneN}/${items.length} done`
+function recount(el, items, date, missedCount) {
+  const doneN = items.filter((x) => (date ? done[x.id] === date : done[x.id])).length;
+  el.querySelector(".day-count").textContent = missedCount
+    ? `${doneN} done · ${missedCount} missed`
+    : doneN === items.length
+    ? `${doneN} done`
+    : doneN > 0
+    ? `${doneN}/${items.length} done`
     : `${items.length} items`;
 }
 
@@ -109,19 +128,24 @@ function render() {
   main.innerHTML = "";
 
   const today = dateStr();
-  const todayKey = `d${today}`;
+  rollover(today);
+  const missedSet = new Set(Object.values(missed).flat());
+
   const remaining = QUEUE.filter((i) => !done[i.id]);
   const doneToday = QUEUE.filter((i) => done[i.id] === today);
-  const pastDates = [...new Set(Object.values(done))].filter((d) => d < today).sort();
+  const pastDates = [...new Set([...Object.values(done), ...Object.keys(missed)])]
+    .filter((d) => d < today)
+    .sort();
 
   const sections = [];
   let dayNum = 0;
 
-  const addSection = (items, chipText, dateLabel, key) => {
+  // date: ISO string for real days, null for projected future days.
+  const addSection = (items, chipText, dateLabel, key, date) => {
     if (!items.length) return;
     dayNum++;
     const el = document.createElement("section");
-    const open = openState.get(key) ?? key === todayKey;
+    const open = openState.get(key) ?? date === today;
     el.className = `day${open ? " open" : ""}`;
     sections.push({ el, items, key });
 
@@ -142,19 +166,24 @@ function render() {
     list.className = "problems";
 
     for (const item of items) {
+      // In a past section, an item recorded as missed that day renders as a
+      // non-actionable record — the actionable copy lives in its new day.
+      const isMissedRecord = date && date !== today && missed[date]?.includes(item.id);
+
       const row = document.createElement("label");
-      row.className = `problem${done[item.id] ? " done" : ""}`;
+      row.className = `problem${done[item.id] ? " done" : ""}${isMissedRecord ? " missed" : ""}`;
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = !!done[item.id];
+      cb.disabled = isMissedRecord;
       cb.addEventListener("change", () => {
         cb.checked ? (done[item.id] = today) : delete done[item.id];
         saveDone();
         row.classList.toggle("done", cb.checked);
-        recount(el, items);
+        recount(el, items, date, date && date !== today ? missed[date]?.length || 0 : 0);
         updateStats();
-        const next = sections.find((s) => s.el.querySelector("input:not(:checked)"));
+        const next = sections.find((s) => s.el.querySelector("input:not(:checked):not(:disabled)"));
         if (next && !next.el.classList.contains("open")) {
           next.el.classList.add("open");
           openState.set(next.key, true);
@@ -183,7 +212,17 @@ function render() {
         diff.textContent = { E: "Easy", M: "Med", H: "Hard" }[item.diff];
 
         row.append(cb, link, note);
-        if (topics.length > 1) {
+        if (isMissedRecord) {
+          const tag = document.createElement("span");
+          tag.className = "topic-tag missed-tag";
+          tag.textContent = "missed →";
+          row.appendChild(tag);
+        } else if (missedSet.has(item.id)) {
+          const tag = document.createElement("span");
+          tag.className = "topic-tag";
+          tag.textContent = "carried";
+          row.appendChild(tag);
+        } else if (topics.length > 1) {
           const tag = document.createElement("span");
           tag.className = "topic-tag";
           tag.textContent = item.topic;
@@ -216,27 +255,32 @@ function render() {
     }
 
     el.append(header, list);
-    recount(el, items);
+    recount(el, items, date, date && date !== today ? missed[date]?.length || 0 : 0);
     main.appendChild(el);
   };
 
-  // Past days: completed items stay pinned to the date they were done.
+  // Past days: completions stay pinned to their date; unfinished items show as missed.
   for (const date of pastDates) {
     addSection(
-      QUEUE.filter((i) => done[i.id] === date),
+      QUEUE.filter((i) => done[i.id] === date || missed[date]?.includes(i.id)),
       `DAY ${dayNum + 1}`,
       fmtDate(date),
-      `d${date}`
+      `d${date}`,
+      date
     );
   }
 
   // Today: what you already did + enough upcoming items to fill your pace.
   const slots = Math.max(0, pace - doneToday.length);
-  addSection([...doneToday, ...remaining.slice(0, slots)], "TODAY", fmtDay(0), todayKey);
+  const todayItems = [...doneToday, ...remaining.slice(0, slots)];
+  addSection(todayItems, "TODAY", fmtDay(0), `d${today}`, today);
+
+  // Record today's presented set so tomorrow's rollover can tell what was missed.
+  localStorage.setItem(PLAN_KEY, JSON.stringify({ date: today, ids: todayItems.map((i) => i.id) }));
 
   // Upcoming days: the rest of the queue chunked by pace, starting tomorrow.
   chunk(remaining.slice(slots), pace).forEach((items, j) =>
-    addSection(items, `DAY ${dayNum + 1}`, fmtDay(j + 1), `f${j}`)
+    addSection(items, `DAY ${dayNum + 1}`, fmtDay(j + 1), `f${j}`, null)
   );
 
   updateStats();
@@ -253,7 +297,10 @@ document.querySelectorAll(".pace-btn").forEach((b) =>
 document.getElementById("reset-btn").addEventListener("click", () => {
   if (confirm("Clear all progress?")) {
     for (const k in done) delete done[k];
+    missed = {};
     saveDone();
+    localStorage.removeItem(PLAN_KEY);
+    localStorage.removeItem(MISS_KEY);
     openState.clear();
     render();
   }
@@ -263,16 +310,23 @@ document.getElementById("reset-btn").addEventListener("click", () => {
 // that made the change; the focus re-sync covers anything that slips through.
 function syncFromStorage() {
   const latest = JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
+  const latestMissed = JSON.parse(localStorage.getItem(MISS_KEY) || "{}");
+  let dirty = false;
   if (JSON.stringify(latest) !== JSON.stringify(done)) {
     for (const k in done) delete done[k];
     Object.assign(done, latest);
-    render();
+    dirty = true;
+  }
+  if (JSON.stringify(latestMissed) !== JSON.stringify(missed)) {
+    missed = latestMissed;
+    dirty = true;
   }
   const latestPace = +localStorage.getItem(PACE_KEY) || PACE_DEFAULT;
   if (latestPace !== pace) {
     pace = latestPace;
-    render();
+    dirty = true;
   }
+  if (dirty) render();
 }
 window.addEventListener("storage", syncFromStorage);
 window.addEventListener("focus", syncFromStorage);
