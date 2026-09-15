@@ -125,8 +125,8 @@ const QUEUE = [
     ["binary-tree-maximum-path-sum", "Binary Tree Maximum Path Sum", "H"],
   ]),
   task(
-    "System design doc #1 — LLM request batching",
-    "Anthropic-flavored prompt: design batching + scheduling for LLM inference (latency vs throughput, priority tiers). Full writeup using the system-design template.",
+    "System design doc #1 — LLM inference API",
+    "THE reported Anthropic round. Design an inference API for serving LLMs: variable-length requests, GPU memory across concurrent requests, priority queuing, streaming. Go deep on dynamic batching (group similar lengths, flush vs hold), KV cache management, autoscaling on queue-depth × est. tokens.",
     "System Design",
     "system-design/README.md"
   ),
@@ -230,8 +230,14 @@ const QUEUE = [
     "mock-interviews/log.md"
   ),
   task(
+    "SD rep — inference API, timed whiteboard",
+    "Redo doc #1 from memory in 55 min, narrating out loud. This is the reported round — be able to drive batching strategy, KV cache, and autoscaling trade-offs cold.",
+    "System Design",
+    "system-design/README.md"
+  ),
+  task(
     "System design mock",
-    "One full session, someone else prompting you. Bonus: LLM eval infrastructure or prompt-injection detection as the prompt.",
+    "One full session, someone else prompting you. Best prompt: the LLM inference API (the reported round). Alternates: eval infrastructure or prompt-injection detection.",
     "System Design",
     "system-design/README.md"
   ),

@@ -2,6 +2,13 @@
 
 At L5/Senior, expect design rounds to test how you handle ambiguity, trade-offs, and scale — not just "know the components." Drive the conversation; don't wait to be told what to design.
 
+## Reported Anthropic round (prepare this one for sure)
+- [ ] **Design an inference API for serving LLMs** — variable-length requests, GPU memory management across concurrent requests, request queuing with priority, streaming responses. They go deep since it's literally what they build:
+  - Dynamic batching: grouping requests of similar length to maximize GPU utilization; when to flush vs hold for one more request
+  - KV cache management across concurrent generations
+  - Autoscaling signals: queue depth weighted by estimated token count (raw GPU util can look fine while latency tanks)
+  - Related flavors reported: eval infrastructure for a frontier LLM, prompt-injection detection, multi-turn context management
+
 ## Practice list (pick 4-6, mix of these)
 - [ ] Design a rate limiter
 - [ ] Design an LRU cache (+ distributed variant)
