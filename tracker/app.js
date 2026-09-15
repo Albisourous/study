@@ -239,7 +239,15 @@ function render() {
         badge.textContent = item.topic;
 
         row.append(cb, body);
-        if (item.file) {
+        if (item.newFile) {
+          const note = document.createElement("a");
+          note.className = "note";
+          note.href = `obsidian://new?vault=${VAULT}&file=${encodeURIComponent(`${item.newFile}-${today}`)}`;
+          note.title = "Log drill note in Obsidian";
+          note.textContent = "✎ note";
+          wireNoteLink(note, `Opening Obsidian — ${item.newFile}-${today}.md`);
+          row.appendChild(note);
+        } else if (item.file) {
           const note = document.createElement("a");
           note.className = "note";
           note.href = OPEN_NOTE(item.file);
